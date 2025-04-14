@@ -9,7 +9,8 @@ class FaceDetector:
 
     def detect_faces(self, img):
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        faces = self.face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
+        faces = self.face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=9)
+
         return faces
 
     def draw_rectangles(self, img, faces):
@@ -18,30 +19,28 @@ class FaceDetector:
 
     def recognize_face(self, image_path):
         try:
-            # Load image and detect faces
             img = cv2.imread(image_path)
             if img is None:
                 raise ValueError('Failed to read image: {}'.format(image_path))
+
             faces = self.detect_faces(img)
 
-            # Draw rectangles around the faces
             self.draw_rectangles(img, faces)
 
-            # Save image with detected faces
             save_path = os.path.splitext(image_path)[0] + '_detected_faces.jpg'
             cv2.imwrite(save_path, img)
+
+            return len(faces)
 
         except Exception as e:
             print('Error while recognizing face:', e)
 
     def recognize_video(self, video_path):
         try:
-            # Open video capture
             cap = cv2.VideoCapture(video_path)
             if not cap.isOpened():
                 raise ValueError('Failed to open video: {}'.format(video_path))
 
-            # Create video writer to save output video
             output_path = os.path.splitext(video_path)[0] + '_detected_faces.mp4'
             frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -49,22 +48,27 @@ class FaceDetector:
             fourcc = cv2.VideoWriter_fourcc(*'XVID')
             out = cv2.VideoWriter(output_path, fourcc, fps, (frame_width, frame_height))
 
-            # Process video frames
+            count_frame = 0
+            time_detection = 0
             while True:
                 ret, frame = cap.read()
                 if not ret:
                     break
-
-                # Detect faces and draw rectangles around them
+                count_frame = count_frame + 1
                 faces = self.detect_faces(frame)
-                self.draw_rectangles(frame, faces)
 
-                # Save video frame with detected faces
+                if len(faces) == 1:
+                    self.draw_rectangles(frame, faces)
                 out.write(frame)
 
-            # Release video capture and video writer
+                if time_detection == 0:
+                    if not (isinstance(faces, tuple)):
+                        time_detection = str(round(count_frame / fps))
+
             cap.release()
             out.release()
+
+            return time_detection
 
         except Exception as e:
             print('Error while recognizing faces:', e)
